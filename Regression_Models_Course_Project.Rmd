@@ -1,0 +1,199 @@
+---
+title: "Estimating transmission impact on vehicle fuel economy"
+author: "Syed Abdullah Hasan"
+date: "7/15/2021"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+cache       = TRUE, fig.width   = 8, fig.height  = 4, fig.align   = 'center',
+echo        = F, message     = F, include     = T, warning     = F)
+
+```
+
+```{r Loading_Data_and_Libraries, include = F}
+library (dplyr)
+library (reshape2)
+library (ggplot2)
+library (scales)
+library (kableExtra)
+library (olsrr)
+```
+
+# Executive Summary  
+
+# Methodology
+This report analyses data collected by Motor Trend US magazine in 1974 to evaluate the impact of vehicle transmission fuel economy, by considering 10 aspects of automobile design & performance for a set of 32 automobiles (produced in the year 1973-74). The study will first explore key features of the data set, proceed to fit an appropriate regression model and subsequently evaluate the following questions:
+
+1. Is an automatic or manual transmission better for fuel economy measured in MPG (miles per gallon)?
+
+2. What is the difference in MPG between automatic and manual transmission vehicles?
+
+# Exploratory Data Analysis
+```{r, include=T}
+data(mtcars)
+mtcars$am<-as.factor(mtcars$am)
+mtcars$vs<-as.factor(mtcars$vs)
+```
+The data set used for the report includes 32 observations on the following set of numeric variables:  
+  1. mpg	      - Miles/(US) gallon  
+  2. cyl	      - Number of cylinders  
+  3. disp	      - Displacement (cu.in.)  
+  4. hp	        - Gross horsepower  
+  5. drat	      - Rear axle ratio  
+  6. wt	        - Weight (1000 lbs)  
+  7. qsec	      - 1/4 mile time  
+  8. vs	        - Engine (0 = V-shaped, 1 = straight)  
+  9. am	        - Transmission (0 = automatic, 1 = manual)  
+  10. gear      - Number of forward gears  
+  11. carb      - Number of carburetors  
+
+Variables 'vs' and 'am' are converted to factors prior to model specification.
+
+As seen in Chart 1 (Appendix), 'mpg' is clearly related to each of the variables in the data set, hence all variables should be evaluated in model selection when analyzing the isolated impact of transmission on fuel economy.
+
+However, correlation between each of the above variables needs to be checked prior to proceeding with model selection. Correlated predictors may introduce multicollinearity in the model, confounding interpretation of potentially significant predictors. 
+
+Table 1 in the appendix section shows that each of the variables exhibit moderate to strong correlation with each other, in addition to mpg. Hence, we need to be careful not to over fit variables in the selected model.
+
+# Model Specification and Selection
+
+In order to select the regression model, we proceed with the following steps:  
+
+1. **Model 1** - The simplest model is fitted first, using `am` as the predictor. 
+`r fit1 <- lm (mpg ~ am - 1, mtcars)`
+ * This model has an R-squared value of `r round(summary(fit1)$r.squared,2)`.  
+2. **Model 2** - Thereafter, we fit a second model with all highly correlated predictors while evaluating impact on the coefficients and their significance. Predictors with the highest correlations are included in the second model, specifically `cyl`, `disp`, `wt` and `hp`. 
+ * The model will suppress the intercept and include interaction terms so that the difference between automatic and manual transmission vehicles on mpg may be captured in the intercept as well slope coefficients.
+ * Based on Table 3, the second model explains up to 95% of the variation in 'mpg' but contains four insignificant predictors.
+ 
+``` {r, include =T}
+
+fit2 <- lm (mpg ~ am + cyl + disp + hp + wt + 
+                    am*(cyl + disp + hp + wt) - 1, mtcars)
+
+```
+3. **Model 3** - Insignificant predictors are excluded from the model. 
+ * The output from the third model shows that 'cyl' is no longer statistically significant.
+```{r, include=T}
+fit3 <- lm (mpg ~ am + cyl + disp + wt + 
+                    am*(wt) - 1, mtcars)
+```
+4. **Model 4** - 'cyl' is dropped from the previous model.
+```{r, include=T}
+fit4 <- lm (mpg ~ am + disp + wt + 
+                    am*(wt) - 1, mtcars)
+```
+Model 4 output shows all variables are statistically significant at an alpha level of 5% and the model accounts for 94% of the variation in mpg on an adjusted basis. The F-statistic also confirms that all variables are collectively significant in terms of predictive power.
+
+## Residual Analysis
+
+The selected model residuals are now screened to rule out any correlation and outliers. The residual plot for the selected model shows that three outliers may be impacting the coefficient standard errors in the selected model and creating non-linearity in the residuals for the fitted model. The residuals appear to be higher for high and low levels of mpg. 
+
+A subset of the data is fitted to the model to evaluate if exclusion of the outliers improves data fit.
+``` {r, include=T}
+mtcars2 <- mtcars[-c(5,15,16,25),]
+fit5 <- lm (mpg ~ am + disp + wt + 
+                    am*(wt) - 1, mtcars2)
+```
+After excluding the outlier data points, the model fit has improved to account for 97% of the variation in the outcome variable. Heteroskedasticity still appears to be at issue since the residual plots show non-uniform variance. We can formally test for heteroskedasticity using the Breush Pagan test and the F-test. 
+
+Since both tests show that the null hypothesis cannot be rejected, we proceed to select the current model and confirm that heteroskedasticity is not significantly affecting the interpretation of the model variables.
+
+# Conclusions  
+The final selected model is as follows:
+mpg ~ am + disp + wt + am * (wt)
+$$mpg =  \beta_0 + \beta_1 * disp + \beta_2 * wt + \beta_3 * am * wt$$
+wherein $$\beta_0$$ is the intercept and $$\beta_2 + \beta_3$$ is the slope coefficient for cases when 'am' = 1.
+
+# Appendix
+## Data set structure
+```{r, include = T}
+str(mtcars) 
+```
+
+## Charts
+``` {r Charts_and_Tables}
+# Scatterplot showing relationship between mpg and all other variables
+data (mtcars)
+mtcars3 <- cbind("cars"=row.names(mtcars),mtcars)
+mtcars3 <- melt(mtcars3, id.vars = c("cars","mpg"))
+g1 <- ggplot (mtcars3, aes(x=mpg)) + 
+        facet_wrap (~variable, scales = "free_y") +
+        geom_point (aes(y=value, col=variable)) + 
+        theme (legend.position = "none") +
+        scale_x_continuous (n.breaks = 4) + 
+        scale_y_continuous (guide = guide_axis(check.overlap = TRUE))
+
+# Boxplot of mpg against am
+g2 <- ggplot (mtcars, aes(x=as.factor(am), y=mpg)) +
+        geom_boxplot (aes(fill=am)) +
+        geom_jitter (position = position_jitter(0.2),
+                     alpha = 0.8, fill = "white") +
+        labs (x = "Automatic Transmission") + 
+        theme (legend.position = "none")
+
+```
+### Chart 1 - Scatter plot of MPG against all other variables  
+```{r, include=T}
+g1
+```
+
+### Chart 2 - Boxplot of MPG against AM  
+```{r, include =T}
+g2
+```
+
+### Chart 3 - Residual plots for Model 4  
+```{r, include=T}
+par(mfrow=c(2,2), mar=c(2,2,2,2), cex=0.5)
+plot(fit4)
+```
+
+### Chart 4 - Residual plots for Model 4 (outliers excluded)  
+```{r, include=T}
+par(mfrow=c(2,2), mar=c(2,2,2,2), cex=0.5)
+plot(fit5)
+```
+## Tables  
+### Table 1 - Correlation matrix for data set  
+```{r, include=T}
+data (mtcars)
+mtcor <- round (cor (mtcars),2)
+upper <- mtcor
+upper [upper.tri(mtcor)] <- ""
+upper <- as.data.frame (upper)
+upper %>% kbl %>% kable_styling(bootstrap_options = c( "striped", 
+                                                       "hover", 
+                                                       "condensed"),
+                                                       font_size = 10)
+```
+### Table 2 - Summary Table - Regression model 1  
+``` {r, include =T}
+summary (fit1)
+```
+### Table 3 - Summary Table - Regression model 2  
+``` {r, include =T}
+summary (fit2)
+```
+### Table 4 - Summary Table - Regression model 3  
+``` {r, include =T}
+summary (fit3)
+```
+### Table 5 - Summary Table - Regression model 4  
+``` {r, include =T}
+summary (fit4)
+```
+### Table 6 - Summary Table - Regression model 4 (outliers excluded)  
+``` {r, include=T}
+summary (fit5)
+```
+### Table 7 - Breusch-pagan test for Heteroskedasticity
+``` {r, include =T}
+ols_test_breusch_pagan (fit5, rhs = TRUE)
+ols_test_f (fit5)
+```
