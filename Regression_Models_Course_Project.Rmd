@@ -20,6 +20,7 @@ library (dplyr)
 library (reshape2)
 library (MASS)
 library (ggplot2)
+library (GGally)
 library (scales)
 library (kableExtra)
 library (olsrr)
@@ -70,7 +71,6 @@ The full model includes `am` as a factor variable with the intercept term suppre
 
 ``` {r}
 
-step.model <- stepAIC (full.model, direction = "both", trace = F)
 ```
 
 The model with the lowest AIC which provides the best fit for the data is as follows:
@@ -106,14 +106,11 @@ summary (mtcars)
 ``` {r Charts_and_Tables}
 # Scatterplot showing relationship between mpg and all other variables
 data (mtcars)
-mtcars3 <- cbind("cars"=row.names(mtcars),mtcars)
-mtcars3 <- melt(mtcars3, id.vars = c("cars","mpg"))
-g1 <- ggplot (mtcars3, aes(x=mpg)) + 
-        facet_wrap (~variable, scales = "free_y") +
-        geom_point (aes(y=value, col=variable)) + 
-        theme (legend.position = "none") +
-        scale_x_continuous (n.breaks = 4) + 
-        scale_y_continuous (guide = guide_axis(check.overlap = TRUE))
+g1<- ggpairs(mtcars, 
+        lower = list (continuous = wrap ("smooth", method = "loess", colour="blue")),
+        diag=list (continuous = wrap ("barDiag", fill="blue", bins=15)),
+        upper=list (wrap = list(corSize=15)), 
+        axisLabels='show')
 
 # Boxplot of mpg against am
 g2 <- ggplot (mtcars, aes(x=as.factor(am), y=mpg)) +
@@ -171,6 +168,10 @@ summary (full.model)
 ```
 ### Table 4 - Summary Table - Best-fit Regression Model 
 ``` {r, include =T}
+data(mtcars)
+mtcars$am <- as.factor(mtcars$am)
+mtcars$vs<-as.factor(mtcars$vs)
+step.model <- stepAIC (full.model, direction = "both", trace = F)
 summary (step.model)
 ```
 ### Table 5 - Breusch-pagan test for Heteroskedasticity
