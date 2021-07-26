@@ -27,7 +27,7 @@ library (olsrr)
 ```
 
 # Executive Summary  
-This project studies the impact of vehicle transmission on fuel economy by examining a sample of 32 vehicles from 1973-74 model years studied by Motor Trend US Magazine. Initial exploratory analysis of the dataset examines impact of transmission on fuel economy as well as underlying correlations between all variables in the dataset. Subsequently an iterative backward selection approach is undertaken to select the optimum regression model, in which vehicle quarter mile times and weight are identified as the key predictors alongside the transmission. Finally, the report concludes that manual transmission vehicles are generally better for fuel economy as compared with automatic transmission vehicles, and add 2.94 miles per gallon on average to fuel economy after adjusting for vehicle performance (proxied by vehicle weight and quarter mile times).
+This project studies the impact of vehicle transmission on fuel economy by examining a sample of 32 vehicles from 1973-74 model years studied by Motor Trend US Magazine. Initial exploratory analysis of the data set examines impact of transmission on fuel economy as well as underlying correlations between all variables. Subsequently, an iterative backward selection approach is undertaken to select the best-fit linear regression model, in which vehicle horsepower, weight and number of cylinders are identified as the key predictors for the outcome variable `mpg` alongside the transmission. Finally, the report concludes that manual transmission vehicles are generally better for fuel economy as compared with automatic transmission vehicles, and add 1.81 miles per gallon on average to fuel economy after adjusting for vehicle performance (modelled by vehicle horsepower, weight and cylinders).
 
 # Methodology
 This report analyses data collected by Motor Trend US Magazine in 1974 to evaluate the impact of vehicle transmission fuel economy, by considering 10 aspects of automobile design & performance for a set of 32 automobiles (produced in the year 1973-74). The study will first explore key features of the data set, proceed to fit an appropriate regression model and subsequently evaluate the following questions:
@@ -36,12 +36,8 @@ This report analyses data collected by Motor Trend US Magazine in 1974 to evalua
 
 2. What is the difference in MPG between automatic and manual transmission vehicles?
 
-# Exploratory Data Analysis
-```{r, include=F}
-data(mtcars)
-mtcars$am<-as.factor(mtcars$am)
-mtcars$vs<-as.factor(mtcars$vs)
-```
+# Data Processing
+
 The data set used for the report includes 32 observations on the following set of numeric variables:  
   1. `mpg`	      - Miles/(US) gallon  
   2. `cyl`	      - Number of cylinders  
@@ -55,27 +51,40 @@ The data set used for the report includes 32 observations on the following set o
   10. `gear`      - Number of forward gears  
   11. `carb`      - Number of carburetors  
 
- * Note: Variables `vs` and `am` are converted to factors prior to model specification.
+As seen in Chart 1 (Appendix), variables `cyl`, `vs`, `am`, `gear` and `carb` are factors with multiple levels. Therefore, the data is processed to convert each variable into a factor variable during model specification.
 
-As seen in Chart 1 (Appendix), `mpg` is clearly correlated to each of the variables in the data set, hence all variables should be evaluated in model selection when analyzing the isolated impact of transmission on fuel economy. 
-
-Chart 2 shows that automatic transmission vehicles have a better fuel economy on average as compared with manual transmission vehicles. By specifying a base regression model for `mpg` against `am` (Table 1), we can confirm that the average fuel economy (`mpg`) for manual transmission vehicles is `r round(mean(subset(mtcars, am==1)[,1]),2)` whereas that for automatic transmission vehicles is `r round(mean(subset(mtcars, am==0)[,1]),2)`. Both coefficients in the model are statistically significant at an alpha level of 5%.
-
-However, this analysis does not account for the impact of additional variables in the data set on fuel economy. From Table 2, we can observe a high correlation between each of the  variables in the data set with `mpg` and with each other. Correlated predictors may introduce multicollinearity in the model, confounding interpretation of potentially significant predictors. Hence, we need to be careful not to over-fit variables in the best-fit model.
+# Exploratory Data Analysis
+As seen in Chart 1 (Appendix), `mpg` is clearly correlated to each of the variables in the data set, hence all variables should be evaluated in model selection when analyzing the isolated impact of transmission on fuel economy. Chart 2 shows that automatic transmission vehicles have a better fuel economy on average as compared with manual transmission vehicles. 
+From Chart 1, we can observe a high correlation between each of the  variables in the data set with `mpg` and with each other. Correlated predictors may introduce multicollinearity in the model, confounding interpretation of potentially significant predictors. Hence, we need to be careful not to over-fit variables in the best-fit model.
 
 # Model Specification and Selection
-
+```{r include=F}
+base.model <- lm(mpg~factor(am),mtcars)
+full.model <- lm (mpg ~ disp + hp + drat + wt + qsec + 
+                    as.factor(am) + as.factor(vs) + as.factor (carb) +
+                    as.factor (gear) + as.factor (cyl), data=mtcars)
+step.model <- stepAIC (full.model, direction = "both", trace = F)
+```
 Step-wise regression is employed to remove predictors in each iteration from a fully specified model until the best performing model with the lowest prediction error is determined. The Akaike Information Criterion (AIC) is used to evaluate the model with the best fit. 
 
-The full model includes `am` as a factor variable with the intercept term suppressed. This model structure allows to capture impact of transmission (`am`) on fuel economy (`mpg`) via the intercept term. Table 3 shows that none of the predictors are statistically significant in this model.
+## Base Model
+By specifying a base regression model for `mpg` against `am` (Table 1), we can confirm that the average fuel economy (`mpg`) for manual transmission vehicles is `r round(mean(subset(mtcars, am==1)[,1]),2)` whereas that for automatic transmission vehicles is `r round(mean(subset(mtcars, am==0)[,1]),2)`. Both coefficients in the model are statistically significant at an alpha level of 5%. Therefore, on first glance, it appears that the type of vehicle transmission impacts fuel economy by `r round(summary(base.model)$coef[2,1],2)` miles per gallon, which is a very large difference. 
 
-``` {r}
+However, this analysis does not account for the impact of additional variables in the data set on fuel economy. The base model has an adjusted R-squared of `r sprintf("%3.2f%%", summary(base.model)$adj.r.squared*100)`, implying low predictive power. After adjusting for the impact of additional factors, the difference in fuel economy due to vehicle transmission may not be as great as seen in the base model.
 
-```
+## Full Model  
+The full model includes `am`, `vs`, `carb` and `gear` as factor variables. In this model structure, the intercept term captures the expected value for fuel economy for a reference vehicle with automatic transmission, 1 carburetor, 3 gears, 4 cylinders and straight-line engine configuration. 
 
-The model with the lowest AIC which provides the best fit for the data is as follows:
-$$mpg =  \beta_0 + \beta_1 * wt + \beta_2 * qsec$$
-where $$\beta_0$$ is the intercept capturing impact of transmission `am` on fuel economy `mpg`.
+The model has an adjusted R-squared of `r sprintf("%3.2f%%", summary(full.model)$adj.r.squared*100)` and implies that the reference vehicle has an average fuel economy of `r round(summary(full.model)$coef[1,1],2)` miles per gallon. A manual transmission would increase the fuel economy to `r round(summary(full.model)$coef[1,1] + summary(full.model)$coef[7,1],2)` miles per gallon holding all other factors constant. After adjusting for all factors, a manual transmission improves fuel economy by `r `summary(full.model)$coef[7,1]` miles per gallon, which is lower than the value of `r round(summary(base.model)$coef[2,1],2)`in the base model. 
+
+However, Table 2 shows that none of the predictors are statistically significant in this model at a 5% alpha level. 
+
+## Best-fit Model
+We therefore proceed to remove predictors from the model until a best-fit model can be narrowed down. Table 3 shows the summary statistics for the best-fit model with the lowest AIC for the data, for which the formula is as follows:
+$$mpg =  \beta_0 + \beta_1 * hp + \beta_2 * wt + \beta_3*am_1 + \beta_4*cyl_6 + \beta_5*cyl_8$$
+where $$\beta_0$$ is the intercept capturing impact of transmission `am` on fuel economy `mpg` for a reference vehicle with automatic transmission and a four cylinder engine.
+
+The F-statistic p-value for the best-fit model shows that all variables are collectively significant and all but one predictors are individually significant at the 5% alpha level. The model has an adjusted R-squared value of `r sprintf("%3.2f%%", summary(step.model)$adj.r.squared*100)`, implying strong fit with the data set.
 
 ## Analysis of Residuals
 
@@ -84,24 +93,45 @@ The selected model residuals are now screened to rule out any evidence of hetero
  * The plot of residuals against fitted-vales (Chart 3) for the best-fit model shows a largely random distribution. 
  * The Normal Q-Q plot shows majority of points falling along the dotted line, indicating that the residuals are normally distributed.
  * The scale-location plot confirms a normal distribution. 
- * Despite the presence of outliers (Chart 4), the Cook's D-bar plot shows that all distances are significantly less than 1.
- * We can formally test for heteroskedasticity using the Breush Pagan test and the F-test (Table 5). Both tests show that the null hypothesis cannot be rejected, we proceed to select the current model and confirm that heteroskedasticity is not significantly affecting the interpretation of the model variables.
+ * Despite the presence of two outliers (Chart 4), the Cook's D-bar plot shows that all distances are significantly less than 1 and below the threshold.
+ * We can formally test for heteroskedasticity using the Breush Pagan test (Table 4). At an alpha level of 5%, he null hypothesis cannot be rejected. We therefore select the current model and confirm that the variance of residuals in the model is constant.
 
 # Model Interpretation  
 The following conclusions may be drawn from the best-fit model selected in this analysis:  
 
  * The model explains `r round(summary(step.model)$adj.r.squared *100,2)` percent of variation in the outcome variable `mpg`.
- * The model predicts that an automatic transmission `am = 1` increases fuel economy (`mpg`) on average by  `r round(summary(step.model)$coef[4,1] -  summary(step.model)$coef[3,1],2)` miles per gallon, after adjusting for the impact of weight and quarter mile times of sampled cars.
- * Based on the model findings, automatic transmission vehicles are generally better for fuel economy as compared with manual transmission vehicles.
+ * The model predicts that a reference vehicle witn automatic transmission has an expected fuel economy (`mpg`) of `r round(summary(step.model)$coef[1,1],2)` whereas this improves by  `r round(summary(step.model)$coef[4,1],2)` miles per gallon, after adjusting for the impact of weight, horsepower and number of cylinders across sampled cars.
+ * Based on the model results, automatic transmission vehicles are generally worse for fuel economy as compared with manual transmission vehicles.
 
 \newpage
-
 # Appendix
 ## Dataset Summary
 ```{r, include = T}
 summary (mtcars) 
 ```
-
+## Tables  
+### Table 1 - Summary Table - Full Regression Model 
+``` {r, include =T}
+base.model <- lm(mpg~factor(am),mtcars)
+summary (base.model)
+```
+### Table 2 - Summary Table - Full Regression Model 
+``` {r, include =T}
+full.model <- lm (mpg ~ disp + hp + drat + wt + qsec + 
+                    as.factor(am) + as.factor(vs) + as.factor (carb) +
+                    as.factor (gear) + as.factor (cyl), data=mtcars)
+summary (full.model)
+```
+### Table 3 - Summary Table - Best-fit Regression Model 
+``` {r, include =T}
+step.model <- stepAIC (full.model, direction = "both", trace = F)
+summary (step.model)
+```
+### Table 4 - Breusch-pagan test for Heteroskedasticity
+``` {r, include =T}
+ols_test_breusch_pagan (step.model)
+```
+\newpage  
 ## Charts
 ``` {r Charts_and_Tables}
 # Scatterplot showing relationship between mpg and all other variables
@@ -109,11 +139,11 @@ data (mtcars)
 g1<- ggpairs(mtcars, 
         lower = list (continuous = wrap ("smooth", method = "loess", colour="blue")),
         diag=list (continuous = wrap ("barDiag", fill="blue", bins=15)),
-        upper=list (wrap = list(corSize=15)), 
+        upper=list (wrap = list(corSize=10)), 
         axisLabels='show')
 
 # Boxplot of mpg against am
-g2 <- ggplot (mtcars, aes(x=as.factor(am), y=mpg)) +
+g2 <- ggplot (mtcars, aes(x=am, y=mpg)) +
         geom_boxplot (aes(fill=am)) +
         geom_jitter (position = position_jitter(0.2),
                      alpha = 0.8, fill = "white") +
@@ -122,7 +152,7 @@ g2 <- ggplot (mtcars, aes(x=as.factor(am), y=mpg)) +
 
 ```
 ### Chart 1 - Scatter plot of MPG against all other variables  
-```{r, include=T}
+```{r, include=T, fig.height=8}
 g1
 ```
 
@@ -143,39 +173,3 @@ par(mfrow=c(1,1), mar=c(2,2,2,2), cex=0.5)
 ols_plot_cooksd_bar(step.model)
 ```
 
-## Tables  
-### Table 1 - Summary Table - Full Regression Model 
-``` {r, include =T}
-base.model <- lm(mpg~factor(am),mtcars)
-summary (base.model)
-```
-### Table 2 - Correlation matrix for data set  
-```{r, include=T}
-data (mtcars)
-mtcor <- round (cor (mtcars),2)
-upper <- mtcor
-upper [upper.tri(mtcor)] <- ""
-upper <- as.data.frame (upper)
-upper
-```
-### Table 3 - Summary Table - Full Regression Model 
-``` {r, include =T}
-data(mtcars)
-mtcars$am <- as.factor(mtcars$am)
-mtcars$vs<-as.factor(mtcars$vs)
-full.model <- lm (mpg~. -1,data=mtcars)
-summary (full.model)
-```
-### Table 4 - Summary Table - Best-fit Regression Model 
-``` {r, include =T}
-data(mtcars)
-mtcars$am <- as.factor(mtcars$am)
-mtcars$vs<-as.factor(mtcars$vs)
-step.model <- stepAIC (full.model, direction = "both", trace = F)
-summary (step.model)
-```
-### Table 5 - Breusch-pagan test for Heteroskedasticity
-``` {r, include =T}
-ols_test_breusch_pagan (step.model, rhs = TRUE)
-ols_test_f (step.model)
-```
