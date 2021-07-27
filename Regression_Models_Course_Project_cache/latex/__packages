@@ -1,0 +1,9 @@
+base
+dplyr
+reshape2
+ggplot2
+scales
+kableExtra
+olsrr
+MASS
+GGally

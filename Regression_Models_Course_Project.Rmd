@@ -3,9 +3,9 @@ title: "Estimating transmission impact on vehicle fuel economy"
 author: "Syed Abdullah Hasan"
 date: "7/15/2021"
 output:
-  pdf_document: default
   html_document:
     df_print: paged
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -75,7 +75,7 @@ However, this analysis does not account for the impact of additional variables i
 ## Full Model  
 The full model includes `am`, `vs`, `carb` and `gear` as factor variables. In this model structure, the intercept term captures the expected value for fuel economy for a reference vehicle with automatic transmission, 1 carburetor, 3 gears, 4 cylinders and straight-line engine configuration. 
 
-The model has an adjusted R-squared of `r sprintf("%3.2f%%", summary(full.model)$adj.r.squared*100)` and implies that the reference vehicle has an average fuel economy of `r round(summary(full.model)$coef[1,1],2)` miles per gallon. A manual transmission would increase the fuel economy to `r round(summary(full.model)$coef[1,1] + summary(full.model)$coef[7,1],2)` miles per gallon holding all other factors constant. After adjusting for all factors, a manual transmission improves fuel economy by `r `summary(full.model)$coef[7,1]` miles per gallon, which is lower than the value of `r round(summary(base.model)$coef[2,1],2)`in the base model. 
+The model has an adjusted R-squared of `r sprintf("%3.2f%%", summary(full.model)$adj.r.squared*100)` and implies that the reference vehicle has an average fuel economy of `r round(summary(full.model)$coef[1,1],2)` miles per gallon. A manual transmission would increase the fuel economy to `r round(summary(full.model)$coef[1,1] + summary(full.model)$coef[7,1],2)` miles per gallon holding all other factors constant. After adjusting for all factors, a manual transmission improves fuel economy by `r summary(full.model)$coef[7,1]` miles per gallon, which is lower than the value of `r round(summary(base.model)$coef[2,1],2)` in the base model. 
 
 However, Table 2 shows that none of the predictors are statistically significant in this model at a 5% alpha level. 
 
@@ -94,7 +94,7 @@ The selected model residuals are now screened to rule out any evidence of hetero
  * The Normal Q-Q plot shows majority of points falling along the dotted line, indicating that the residuals are normally distributed.
  * The scale-location plot confirms a normal distribution. 
  * Despite the presence of two outliers (Chart 4), the Cook's D-bar plot shows that all distances are significantly less than 1 and below the threshold.
- * We can formally test for heteroskedasticity using the Breush Pagan test (Table 4). At an alpha level of 5%, he null hypothesis cannot be rejected. We therefore select the current model and confirm that the variance of residuals in the model is constant.
+ * We can formally test for heteroskedasticity using the Breush Pagan test (Table 4). At an alpha level of 5%, the null hypothesis cannot be rejected. We therefore select the current model and confirm that the variance of residuals in the model is constant.
 
 # Model Interpretation  
 The following conclusions may be drawn from the best-fit model selected in this analysis:  
@@ -143,7 +143,7 @@ g1<- ggpairs(mtcars,
         axisLabels='show')
 
 # Boxplot of mpg against am
-g2 <- ggplot (mtcars, aes(x=am, y=mpg)) +
+g2 <- ggplot (mtcars, aes(x=as.factor(am), y=mpg)) +
         geom_boxplot (aes(fill=am)) +
         geom_jitter (position = position_jitter(0.2),
                      alpha = 0.8, fill = "white") +
